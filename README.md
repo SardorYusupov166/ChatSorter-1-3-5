@@ -1,6 +1,10 @@
-# ChatSorter 1.3.6 — Minecraft 1.21.11
+# ChatSorter 1.3.6 — Minecraft 1.21.9
 
 Создан **mlpgod** для сервера **MigosMC**.
+
+## Вариант для Minecraft 1.21.9
+
+Этот архив предназначен для Minecraft 1.21.9. Он сохраняет функции версии 1.3.6. Устанавливайте только вариант, соответствующий версии Minecraft.
 
 ## Изменения 1.3.6
 
@@ -21,14 +25,14 @@
 
 ## Установка
 
-Minecraft **1.21.11**, Java **21+**, Fabric Loader **0.18.0+**, Fabric API для 1.21.11.
+Minecraft **1.21.9**, Java **21+**, Fabric Loader **0.18.0+**, Fabric API для 1.21.9.
 Удалите старый JAR ChatSorter из `mods` и поместите новый. Конфигурацию удалять не нужно.
-Для справочника добавьте второй файл `migos-rules-1.0.1.jar`.
+Для справочника добавьте второй файл `migos-rules-mc1.21.9-1.0.1.jar`.
 
 ## Сборка
 
 Gradle **9.2.1**, JDK **21**: `gradle build`.
-Результат: `build/libs/chatsorter-1.3.6.jar`.
+Результат: `build/libs/chatsorter-mc1.21.9-1.3.6.jar`.
 В `.github/workflows` есть сборка через GitHub Actions, включая ручной запуск.
 
 ## Проверки

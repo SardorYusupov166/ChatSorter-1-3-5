@@ -80,13 +80,13 @@ public abstract class ChatScreenMixin extends Screen {
         }
     }
 
-    // Vanilla hit testing redraws text into a ClickHandler without a DrawContext.
-    // Its pointer must be moved back to the original chat origin.
-    @org.spongepowered.asm.mixin.injection.ModifyArgs(method = "mouseClicked", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/font/DrawnTextConsumer$ClickHandler;<init>(Lnet/minecraft/client/font/TextRenderer;II)V"))
+    // Translate pointer coordinates used by vanilla chat text hit testing so links
+    // and other interactive message styles remain clickable after moving the chat.
+    @org.spongepowered.asm.mixin.injection.ModifyArgs(method = "getTextStyleAt(DD)Lnet/minecraft/text/Style;",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/hud/ChatHud;getTextStyleAt(DD)Lnet/minecraft/text/Style;"))
     private void chatsorter$offsetClick(org.spongepowered.asm.mixin.injection.invoke.arg.Args args) {
-        args.set(1, (Integer)args.get(1) - ChatPosition.x);
-        args.set(2, (Integer)args.get(2) - ChatPosition.y);
+        args.set(0, (Double) args.get(0) - ChatPosition.x);
+        args.set(1, (Double) args.get(1) - ChatPosition.y);
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
@@ -195,7 +195,7 @@ public abstract class ChatScreenMixin extends Screen {
         mc.player.sendMessage(Text.literal("[ChatSorter] Сообщение скопировано"), true);
         return true;
     }
-    // ChatScreen does not declare mouseDragged in Minecraft 1.21.11.
+    // ChatScreen does not declare mouseDragged in Minecraft 1.21.9.
     // Polling while the chat screen is open avoids a missing-target Mixin injection.
     private void chatsorter$pollDrag() {
         if (!chatsorter$dragging && !chatsorter$resizing) return;

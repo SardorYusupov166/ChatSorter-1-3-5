@@ -1,7 +1,7 @@
 plugins { id 'net.fabricmc.fabric-loom-remap' version '1.14.10' }
 version = project.mod_version
 group = 'dev.chatsorter'
-base { archivesName = 'chatsorter' }
+base { archivesName = 'chatsorter-mc1.21.9' }
 repositories { mavenCentral() }
 dependencies {
  minecraft "com.mojang:minecraft:${project.minecraft_version}"
