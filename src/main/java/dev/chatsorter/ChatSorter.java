@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Locale;
 
 public class ChatSorter implements ClientModInitializer {
+    /** Shared capacity for vanilla chat scrollback and ChatSorter tab/search history. */
+    private static final int MAX_CHAT_HISTORY = 16_384;
+    public static int maxChatHistory() { return MAX_CHAT_HISTORY; }
     public enum Tab { NEARBY("Общий чат"), DM("ЛС"), SPY("Spy"), CONSOLE("Консоль"), ALL("Все");
         public final String title; Tab(String title) { this.title = title; }
     }
@@ -49,11 +52,8 @@ public class ChatSorter implements ClientModInitializer {
         java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
     public static String timestamp(Text message) { return java.time.LocalTime.now().withNano(0).toString(); }
     private static final java.util.IdentityHashMap<Text,String> times = new java.util.IdentityHashMap<>();
-    private static final java.util.Map<String,String> latestTimes = new java.util.HashMap<>();
-    public static String copyRenderedLine(String line) {
-        return "[" + latestTimes.getOrDefault(line, java.time.LocalTime.now().withNano(0).toString()) + "] " + line;
-    }
-    public static String copyText(Text text) { return "[" + times.getOrDefault(text, java.time.LocalTime.now().withNano(0).toString()) + "] " + text.getString(); }
+    private static final java.util.ArrayDeque<Text> receivedMessages = new java.util.ArrayDeque<>();
+    public static String copyText(Text text) { return "[" + times.getOrDefault(text, "--:--:--") + "] " + text.getString(); }
 
     private static final List<Text>[] history = new List[]{new ArrayList<>(),new ArrayList<>(),new ArrayList<>(),new ArrayList<>(),new ArrayList<>()};
     @Override public void onInitializeClient() {
@@ -90,7 +90,7 @@ public class ChatSorter implements ClientModInitializer {
                     .append(Text.literal("mlpgod").styled(style -> style.withColor(0xFFFFFF))));
                 client.inGameHud.getChatHud().addMessage(Text.literal("Сервер: ").styled(style -> style.withColor(0xFFCC55))
                     .append(Text.literal("MigosMC").styled(style -> style.withColor(0xFFFFFF))));
-                client.inGameHud.getChatHud().addMessage(Text.literal("ChatSorter 1.3.5 | mlpgod - MigosMC").styled(style -> style.withColor(0xAAAAAA)));
+                client.inGameHud.getChatHud().addMessage(Text.literal("ChatSorter 1.3.6 | mlpgod - MigosMC").styled(style -> style.withColor(0xAAAAAA)));
             });
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> { ChatSorterDiagnostics.endSession(); reset(); });
@@ -98,21 +98,24 @@ public class ChatSorter implements ClientModInitializer {
 
     public static boolean capture(Text message) {
         if (replaying) return true;
-        Tab tab = message.getString().startsWith("[ChatSorter]") || message.getString().startsWith("Автор: ") || message.getString().startsWith("Сервер: ") || message.getString().startsWith("ChatSorter 1.3.5 |")
+        Tab tab = message.getString().startsWith("[ChatSorter]") || message.getString().startsWith("Автор: ") || message.getString().startsWith("Сервер: ") || message.getString().startsWith("ChatSorter 1.3.6 |")
             ? Tab.NEARBY : classify(message.getString());
         KeywordAlerts.notifyIfMatched(message.getString());
         ChatSorterDiagnostics.record(message, tab.name(), selected.name(), tab == selected || selected == Tab.ALL);
         List<Text> messages = history[tab.ordinal()];
+        String receivedAt = timestamp(message);
+        times.put(message, receivedAt);
+        receivedMessages.add(message);
+        if (receivedMessages.size() > MAX_CHAT_HISTORY) times.remove(receivedMessages.removeFirst());
         Text stored = message.copy();
         messages.add(stored);
-        times.put(stored, timestamp(message));
-        latestTimes.put(message.getString(), times.get(stored));
+        times.put(stored, receivedAt);
         List<Text> allMessages = history[Tab.ALL.ordinal()];
         Text allStored = message.copy();
         allMessages.add(allStored);
-        times.put(allStored, times.get(stored));
-        if (allMessages.size() > 300) times.remove(allMessages.remove(0));
-        if (messages.size() > 300) times.remove(messages.remove(0));
+        times.put(allStored, receivedAt);
+        if (allMessages.size() > MAX_CHAT_HISTORY) times.remove(allMessages.remove(0));
+        if (messages.size() > MAX_CHAT_HISTORY) times.remove(messages.remove(0));
         if (selected != tab && selected != Tab.ALL) { unread[tab.ordinal()]++; unread[Tab.ALL.ordinal()]++; }
         if (isSearching()) {
             if (message.getString().toLowerCase(Locale.ROOT).contains(searchQuery)) return true;
@@ -155,7 +158,7 @@ public class ChatSorter implements ClientModInitializer {
     public static void reset() {
         for (List<Text> messages : history) messages.clear();
         times.clear();
-        latestTimes.clear();
+        receivedMessages.clear();
         java.util.Arrays.fill(unread, 0);
         selected = Tab.ALL;
         searchQuery = "";

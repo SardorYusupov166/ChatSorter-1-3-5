@@ -13,7 +13,6 @@ import net.minecraft.client.gui.Click;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.hud.ChatHud;
 import net.minecraft.client.gui.hud.ChatHudLine;
-import net.minecraft.text.OrderedText;
 import java.util.List;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
@@ -177,24 +176,22 @@ public abstract class ChatScreenMixin extends Screen {
         if (chatX < 0 || chatX > 400 || index < 0 || chatY < 0) return false;
         List<ChatHudLine.Visible> lines = ((ChatHudAccess) hud).chatsorter$getVisibleMessages();
         if (index >= lines.size()) return false;
-        // Vanilla ChatHud stores wrapped visual rows in reverse order. The
-        // endOfEntry flag marks the bottom visual row of each original message.
-        // Find the whole entry regardless of which wrapped row was clicked.
+        // Vanilla ChatHud stores wrapped visual rows and source messages newest
+        // first. Count entry boundaries to resolve this visual row to its exact
+        // ChatHudLine, preserving the timestamp even for duplicate message text.
         int bottom = index;
         while (bottom > 0 && !lines.get(bottom).endOfEntry()) bottom--;
-        int top = bottom;
-        while (top + 1 < lines.size() && !lines.get(top + 1).endOfEntry()) top++;
-        StringBuilder builder = new StringBuilder();
-        for (int row = top; row >= bottom; row--) {
-            OrderedText ordered = lines.get(row).content();
-            ordered.accept((charIndex, style, codePoint) -> {
-                builder.appendCodePoint(codePoint);
-                return true;
-            });
+        int messageIndex = 0;
+        for (int row = 0; row <= bottom; row++) {
+            if (lines.get(row).endOfEntry()) messageIndex++;
         }
-        String fullMessage = builder.toString().strip();
+        List<ChatHudLine> messages = ((ChatHudAccess) hud).chatsorter$getMessages();
+        int sourceIndex = messageIndex - 1;
+        if (sourceIndex < 0 || sourceIndex >= messages.size()) return false;
+        Text sourceMessage = messages.get(sourceIndex).content();
+        String fullMessage = sourceMessage.getString().strip();
         if (fullMessage.isEmpty()) return false;
-        mc.keyboard.setClipboard(ChatSorter.copyRenderedLine(fullMessage));
+        mc.keyboard.setClipboard(ChatSorter.copyText(sourceMessage));
         mc.player.sendMessage(Text.literal("[ChatSorter] Сообщение скопировано"), true);
         return true;
     }
